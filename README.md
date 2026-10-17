@@ -917,3 +917,73 @@ PC 防火墙                 → Node 规则 Profile=Public，网卡 NetworkCate
 | 功耗 | ✅ 极低 | ❌ 得开着 PC |
 
 **说一声你要哪种，或者两种都要**，我可以两个都搭起来。
+
+---
+
+## 9. 本仓库怎么更新（维护者向）
+
+远端：<https://github.com/439436269-ctrl/zspace-dsh>（public）
+
+### 这台机器上的三个前提（都是踩出来的，改配置前先读这段）
+
+**① `credential.helper` 有一条系统级的 `manager`（Git Credential Manager），必须重置掉**
+
+`C:\Program Files\Git\etc\gitconfig` 里写着 `credential.helper = manager`。GCM 要凭据时会**弹 GUI 对话框**，
+在无头/后台环境里表现为 `git credential fill` **无限挂起**，或
+`fatal: User cancelled dialog.` + `error: failed to execute prompt script (exit code 1)`。
+
+`~/.gitconfig` 里必须先用**空值**把继承链清掉，再接 `store`：
+
+```ini
+[credential]
+	helper =          # ← 空值 = 重置从 system 继承来的 manager，别删这条
+	helper = store
+```
+
+凭据本身放在 `~/.git-credentials`，一行：`https://439436269-ctrl:<token>@github.com`。
+token 取自 `~/.secrets/keys.env` 的 `GITHUB_TOKEN`（**提取必须用 `\S+`**，行尾有中文注释，
+按 `=` 整行切分会把注释吞进 token，在 HTTP 头里炸 `latin-1 UnicodeEncodeError`）。
+
+**② 全局有一条 `insteadOf` 会把 https 改写成 SSH**
+
+```ini
+[url "git@github.com:"]
+	insteadOf = https://github.com/
+```
+
+于是 `git remote add https://github.com/...` 会变成 `git@github.com:...`，走 SSH（22 端口/公钥），
+在只开放 443 的网络里必然失败。**本仓库的 remote 用显式 `:443` 端口绕开改写**：
+
+```sh
+git remote set-url origin https://github.com:443/439436269-ctrl/zspace-dsh.git
+```
+
+（`https://github.com/` 不是 `https://github.com:443/` 的前缀，所以不匹配改写规则。）
+
+**③ `github.com` 能通但很慢（约 8 秒）**
+
+探活时**超时别设 12 秒**，否则会误判成"不可达"而白白绕道 API。
+所以 `git push` 比平时慢是正常的，不是挂了。
+
+### 日常提交
+
+```sh
+git add -A
+git commit -m "..."
+git push origin main        # 走 https + store 的 token，不弹窗
+```
+
+如果 `git push` 仍然失败，**先按①检查 helper 链**：
+
+```sh
+git config --show-origin --get-all credential.helper
+# 期望输出三行：system 的 manager、global 的空行、global 的 store
+# 少了中间那条空行 = GCM 会重新拦上来
+```
+
+### 只在 `git push` 彻底不可用时（应急）
+
+走 `api.github.com` 的 Git Data API（`dsh-plugin-publish-repo` 技能的 `gh_api_push.py`）。
+代价是**本地与远端成为平行历史**（tree 相同、SHA 不同），恢复后要
+`git fetch origin && git reset --hard origin/main` 对齐。
+**能 push 就别用这条**——它是症状不是解法，而且中文文件名在 Windows 上还有二次编码的坑。
