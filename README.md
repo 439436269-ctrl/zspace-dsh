@@ -944,21 +944,18 @@ PC 防火墙                 → Node 规则 Profile=Public，网卡 NetworkCate
 token 取自 `~/.secrets/keys.env` 的 `GITHUB_TOKEN`（**提取必须用 `\S+`**，行尾有中文注释，
 按 `=` 整行切分会把注释吞进 token，在 HTTP 头里炸 `latin-1 UnicodeEncodeError`）。
 
-**② 全局有一条 `insteadOf` 会把 https 改写成 SSH**
+**② 全局曾有一条 `insteadOf` 把 https 改写成 SSH（已于 2026-10-17 移除）**
 
 ```ini
-[url "git@github.com:"]
-	insteadOf = https://github.com/
+# 原来是这两行，导致 git remote add https://github.com/... 变成 git@github.com:...，
+# 走 SSH（22 端口/公钥），在只开放 443 的网络里必然失败：
+# [url "git@github.com:"]
+# 	insteadOf = https://github.com/
 ```
 
-于是 `git remote add https://github.com/...` 会变成 `git@github.com:...`，走 SSH（22 端口/公钥），
-在只开放 443 的网络里必然失败。**本仓库的 remote 用显式 `:443` 端口绕开改写**：
-
-```sh
-git remote set-url origin https://github.com:443/439436269-ctrl/zspace-dsh.git
-```
-
-（`https://github.com/` 不是 `https://github.com:443/` 的前缀，所以不匹配改写规则。）
+它本来是当年为了绕开 GCM 弹窗才加的**权宜之计**。GCM 被绕开（见①）之后 HTTPS 已经正常，
+所以这条改写给删掉了——**删掉它，`git remote add https://github.com/...` 才会真的是 HTTPS**。
+`~/.gitconfig` 备份在 `~/.gitconfig.bak-20261017`。
 
 **③ `github.com` 能通但很慢（约 8 秒）**
 
@@ -973,12 +970,21 @@ git commit -m "..."
 git push origin main        # 走 https + store 的 token，不弹窗
 ```
 
-如果 `git push` 仍然失败，**先按①检查 helper 链**：
+⚠️ **同一时刻别跑多条 git 命令**。凭据助手已修好，但若 helper 链又被改回去，
+`git push` 会**静默挂起**（等一个永远不来的 GUI 对话框），看起来像网络慢、实际是在等人点按钮。
+
+如果 `git push` 失败，**先按①检查 helper 链**：
 
 ```sh
 git config --show-origin --get-all credential.helper
 # 期望输出三行：system 的 manager、global 的空行、global 的 store
 # 少了中间那条空行 = GCM 会重新拦上来
+```
+
+再确认 remote 没被改写成 SSH：
+
+```sh
+git remote -v      # 必须是 https://github.com/...，不能是 git@github.com:...
 ```
 
 ### 只在 `git push` 彻底不可用时（应急）
