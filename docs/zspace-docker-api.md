@@ -585,10 +585,17 @@ POST /kv/delete  （表单编码！）  k=remoteAccess
 
 ```http
 POST /zdocker/system_restart        ← 是 POST！用 GET 会 404
+body: {}                            ← 空对象就够（实测 POST 带 {} → {"code":"200"}）
 ```
 
 实测 **15 秒内 containerd 恢复，容器按各自 restart 策略自动拉起**。
 极空间自己的文案就是：「此处重启不会影响极空间其他服务，仅重启 Docker 服务。」
+
+> ⚠️ **2026-10-17 第二次踩坑，白跑了一轮**：自己写的 `zd.js` 里 `call(endpoint, method = "GET")`
+> **默认是 GET**，脚本里图省事只传了 endpoint，于是又一次发成 GET → 404 → 误判"这个接口失效了"。
+> **凡是带动作的端点（`system_restart`、`container_op`、`container_start/stop`、`compose_*`）
+> 都必须显式传 `"POST"`。** 排查顺序：先确认方法对不对，再怀疑接口。用 `curl -X GET` 验一下
+> 也能快速分辨（GET 404 / POST 200 = 典型的"方法不对"）。
 
 **两个副作用要注意**：
 
@@ -597,6 +604,15 @@ POST /zdocker/system_restart        ← 是 POST！用 GET 会 404
 2. **`Exited (137)` 是 SIGKILL / OOM，不是正常退出。** 本机 `browser`（KasmVNC Chrome）就是这样被杀的
    ——NAS 内存 15.42 GiB，同时跑 Chrome ＋ ollama ＋ DSH 会顶到天花板。
    **排查这类故障时要顺带扫一眼有没有 137**，那往往就是诱因。
+
+**再次发生的规律（两次实测）**：这台 NAS 上 **containerd 会周期性 wedge**，
+而且**所有容器会几乎同时变成 `Exited (137)`**（同一时间戳），
+此后 `restart: always` **也救不回来**——因为它同样要经 containerd。
+所以：
+- **不要指望 restart 策略兜底**，出问题就按上面这套恢复。
+- **同时跑多个推理容器（ollama ＋ llama.cpp）是主要诱因**，内存顶穿会触发 OOM avalanche。
+- `container_stats` 全零、`container_top` 报 containerd socket 超时 = **确诊**；
+  反之容器在跑、端口 200，即使 stats 解析不出来也只是**响应形状问题，不是 wedge**。
 
 **判断"容器是真活着还是假活着"的可靠办法**：别信 `State`/`Status`，**看端口**。
 
