@@ -1,0 +1,48 @@
+# =============================================================================
+# zspace-dsh — 极空间 Docker「Compose / 项目」粘贴版
+#
+# 极空间 Docker 2.0 有 Compose（项目）入口时，把这份 YAML 粘进去即可。
+# 注意：下面左侧的 NAS 路径要改成你自己的，先在极空间文件管理里建好目录。
+# =============================================================================
+services:
+  zspace-dsh:
+    image: node:22-bookworm-slim
+    container_name: zspace-dsh
+    restart: unless-stopped
+
+    # 极空间宿主机端口:容器端口。左侧可按需改，右侧必须与 DSH_PORT 一致。
+    ports:
+      - "19387:19387"
+
+    environment:
+      TZ: "Asia/Shanghai"
+
+      # 要装的 dsh 版本；升级就是改这里然后重启容器
+      DSH_VERSION: "0.2.0-rc.2"
+
+      # 容器内监听端口，必须与上面 ports 的右侧一致
+      DSH_PORT: "19387"
+
+      # ★ 必填：你极空间的访问地址。填局域网 IP 或域名。
+      #   容器里看不到极空间的真实 IP，不填这个 /api 围栏会拒绝浏览器请求。
+      DSH_PUBLIC_HOST: "<NAS-IP>"
+
+      # 可选：额外允许的 authority（走了域名/内网穿透时写域名），空格分隔
+      # DSH_TRUSTED_HOSTS: "<NAS-IP> dsh.example.com"
+
+      # 权限模式。先试 workspace-write；若日志报沙箱不可用则改 danger-full-access。
+      # 此时容器本身就是安全边界，只挂了下面这几个目录。
+      DSH_PERMISSION_MODE: "workspace-write"
+
+      # 国内建议用镜像源；装失败会自动回退到 registry.npmjs.org
+      DSH_NPM_REGISTRY: "https://registry.npmmirror.com"
+
+    volumes:
+      # 左侧 = 极空间上的真实路径（自己建），右侧固定不要改
+      - /sata1/dsh/npm:/dsh/npm
+      - /sata1/dsh/home:/dsh/home
+      - /sata1/dsh/conf:/dsh/conf
+      - /sata1/dsh/workspace:/workspace
+
+    # 用挂载进来的 entrypoint；如果用的是自建镜像则删掉这行
+    command: ["bash", "/dsh/conf/entrypoint.sh"]

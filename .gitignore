@@ -1,0 +1,42 @@
+# ── 凭据与真实配置：只提交 *.example，绝不提交真身 ──────────────────────────
+# 本仓库是「部署项目的源码」（脚本、补丁示例、文档），
+# NAS 上那份 home/ 里含 API key 与会话凭据，属于运行态，不入库。
+.env
+.env.*
+!.env.example
+.credentials.yaml
+*.credentials.yaml
+home/.env
+home/cordis.patch.yml
+home/*.patch.yml
+!home/*.example
+conf/env.sh
+!conf/env.sh.example
+conf/trusted_hosts.txt
+
+# ── 运行态产物 ──
+*.log
+logs/
+tmp/
+*.tmp
+*.bak
+*.bak-*
+*.v1-*
+entry-url.txt
+
+# ── 依赖与构建产物 ──
+node_modules/
+dist/
+__pycache__/
+*.py[cod]
+
+# ── 抓取/探测产物（本地调试用，体积大且可重生成）──
+shots/
+*.png
+*.jpg
+
+# ── OS / IDE ──
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

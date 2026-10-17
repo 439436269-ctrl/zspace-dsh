@@ -1,0 +1,332 @@
+{
+ "/zdocker/AppStore/v1/pkg/restart": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/list": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/info": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/preinstall": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/install": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/depend/check": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/tasks": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/task/remove": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/stop": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/start": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/remove": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/task/cancel": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/AppStore/v1/pkg/cancel_upgrade": [
+  "index.01f8eb42.js"
+ ],
+ "/zdocker/storagepool_save_datadirconf": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/storagepool_get_disksinfo": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_stats": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_logs": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_read_events_logs": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_top": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_info": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_op": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/local_image_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/local_image_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/common_image_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/common_image_search": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/hub_image_search": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/hub_image_tags": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_info": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/common_image_download": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/common_image_download_task_cancel": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_pull": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_pull_task_cancel": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_pull_task_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/common_image_download_task_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_import": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_remove": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_force_remove": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_info": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_create": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_remove": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_attach": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_detach": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_status": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_switch": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_restart": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_reset": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_get_proxy_conf": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_save_proxy_conf": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/registry_mirrors": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_get_private_hub": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_save_private_hub": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/storagepool_get_datadirconf": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/storagepool_get_datadirusage": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/storagepool_get_datadircopy_tasks": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_info": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_check_upgrade": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_upgrade": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/system_upgrade_task_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/list_projects": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/list_project_containers": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/logs_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/get_project_file": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/check_projectname": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/compose_start_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/compose_stop_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/delete_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/compose_restart_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/rebuild_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/task_list": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/task_status": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/task_cancel": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_get_ip6tables_enable": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/network_set_ip6tables_enable": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_convert_compose": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/storagepool_update_disksinfo": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/image_update": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/container_stats_style": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/create_project": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/check_projectpath": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/cron": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/docker_info": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/container_list_filter_order": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/container_list_filter_sort": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/project_list_filter_order": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/project_list_filter_sort": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/compose/project_list_filter_state": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/image_list_filter_order": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/image_list_filter_sort": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/container_list_filter_class": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/container_list_filter_state": [
+  "1682.23cd1655.js"
+ ],
+ "/zdocker/v2/container_list": [
+  "1682.23cd1655.js"
+ ],
+ "/shortcut/homeshortcut": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/dockershortcuts": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/deleteshortcut": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/deletedockershortcut": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/renameshortcut": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/addshortcut": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/adddockershortcut": [
+  "44320.93b49191.js"
+ ],
+ "/shortcut/renamedockershortcut": [
+  "44320.93b49191.js"
+ ],
+ "/zdocker/app_info": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_remove": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_check_port": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_state": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_start": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_stop": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_open": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_download": [
+  "48096.97fc0486.js"
+ ],
+ "/zdocker/app_install": [
+  "48096.97fc0486.js"
+ ]
+}

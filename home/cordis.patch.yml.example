@@ -1,0 +1,83 @@
+# =============================================================================
+# DSH profile 补丁层示例 —— 放在 $DSH_HOME/profiles/<profile>/cordis.patch.yml
+#
+# 容器里是：/dsh/home/profiles/web/cordis.patch.yml
+#
+# ⚠️ 版本差异（重要）
+# -----------------------------------------------------------------------------
+# 0.1.5 时代：用户设置写在 $DSH_HOME/settings.yaml（namespace → 分节）。
+# 0.2.0 起：**settings.yaml 机制已移除**。启动时若发现它，会改名成
+#           settings.yaml.imported，然后把各分节**导入到当前 profile 的
+#           cordis.patch.yml**（见 dsh-settings 的 importLegacyDocument）。
+#
+# 所以现在配插件的正确位置是**这个文件**。文档结构是一个顶层 YAML 数组，
+# 元素是 { id, name?, config? } —— 按 id 覆盖对应 entry 的 config。
+#
+# 三条硬语义（来自 dsh-plugin-config）：
+#   1. patch 对 config 是**整块替换**，不是深合并。想保留其他键就得全部重写。
+#   2. entry 的 id 就是设置命名空间。
+#   3. 这个文件是热加载的，改完约 1s 生效，通常不用重启。
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# llm-pi-ai：多 provider 插件（给 DSH 接任意 OpenAI/Anthropic 兼容端点）
+#
+# 它默认休眠 —— 不注册任何路由。下面出现 config.providers 后路由才注册；
+# 删掉这段，路由也随之消失。
+# -----------------------------------------------------------------------------
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      # 路由名，随便取；pi-ai 没有内置 ollama，所以协议/端点/模型表都要声明全
+      ollama:
+        displayName: Ollama（极空间本地）
+
+        # 线协议，可选：openai-completions / openai-responses /
+        #              anthropic-messages / google-generative-ai
+        api: openai-completions
+
+        # DSH 容器用 host 网络 → 直接走回环。
+        # Ollama 容器把 11434 发布到宿主机 57777。
+        # 若 DSH 改成 bridge 网络，这里换成 http://<NAS-IP>:57777/v1
+        baseURL: http://127.0.0.1:57777/v1
+
+        defaultContextWindow: 32768
+        defaultMaxTokens: 8192
+
+        # Ollama 不需要 key，所以不写 apiKeyEnv。
+        # 换需要 key 的 provider 时，这里写环境变量名，例如 apiKeyEnv: OPENAI_API_KEY，
+        # 再把真值放进 $DSH_HOME/.env（凭据层）。
+
+        # 模型表：pi-ai 不含 ollama 目录，必须逐个列。
+        # 加模型 = 这里加 4 行 + 跑一次 `ollama pull <id>`。
+        models:
+          - id: qwen2.5:3b
+            name: Qwen2.5 3B（本地）
+            contextWindow: 32768
+            maxTokens: 8192
+            input:
+              - text
+
+# -----------------------------------------------------------------------------
+# 其它常用可覆盖项（按需取消注释）
+# -----------------------------------------------------------------------------
+
+# 让 DSH 看到的默认模型换成 Ollama 的：
+# - id: agent-default-model
+#   config:
+#     provider: ollama
+#     model: qwen2.5:3b
+
+# DeepSeek 官方通道的端点/思考模式（key 走 $DSH_HOME/.env，不写在这里）：
+# - id: llm-deepseek
+#   config:
+#     baseURL: https://api.deepseek.com
+#     thinking: enabled
+#     reasoningEffort: high
+
+# 打开会话全文搜索（默认是内存索引 + 关闭）：
+# - id: session-query-sqlite
+#   config:
+#     path: /dsh/home/search.sqlite
+#     openAt: startup
