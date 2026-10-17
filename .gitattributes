@@ -1,0 +1,17 @@
+# 统一换行符，避免 Windows 上 core.autocrlf 造成的
+# "warning: LF will be replaced by CRLF" 噪音与幽灵 diff
+#
+# 本仓库以文档和 shell/JS 为主，统一按 LF 存储与检出。
+* text=auto eol=lf
+
+# Windows 专用脚本保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制别做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
