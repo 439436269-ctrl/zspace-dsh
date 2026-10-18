@@ -172,6 +172,31 @@ function readBody(req) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://x");
 
+  // 首页给一页人看的说明（无需鉴权）。浏览器无法设置自定义请求头，
+  // 2026-10-18 实测：用户直接在浏览器打开本服务，只会看到 401 JSON，误以为坏了。
+  if (url.pathname === "/" && req.method === "GET") {
+    const html = `<!doctype html><meta charset="utf-8"><title>DSH HTTP API</title>
+<style>body{font:15px/1.7 -apple-system,Segoe UI,Microsoft YaHei,sans-serif;max-width:820px;margin:40px auto;padding:0 20px;color:#222}
+code,pre{background:#f4f4f6;border-radius:6px;padding:2px 6px;font-family:Consolas,monospace;font-size:13px}
+pre{padding:12px;overflow:auto}.warn{background:#fff6e5;border-left:4px solid #f0a020;padding:10px 14px;border-radius:4px}</style>
+<h2>DSH HTTP API</h2>
+<p>这是 <b>API 端点</b>，不是网页。浏览器发不出 <code>X-API-Key</code> 请求头，所以在地址栏直接打开只会看到 401 —— 这是正常的。</p>
+<div class="warn">快速自测（浏览器可直接点，key 会出现在 URL 里，仅限临时测试）：
+<pre>GET  /v1/ask?key=&lt;密钥&gt;&amp;task=只回复两个字：收到</pre></div>
+<h3>接口</h3>
+<pre>GET  /health                     无需鉴权，返回诊断
+POST /v1/ask  {task, sessionId?} 需要 X-API-Key
+GET  /v1/ask?key=&task=[&sessionId=]   浏览器直测用（等价 POST）</pre>
+<h3>当前状态</h3>
+<pre>dsh        = ${DSH_BIN}
+workspace  = ${CWD}
+鉴权        = ${apiKey() ? "已配置" : "⚠️ 未配置（拒绝一切请求）"}
+运行时长    = ${Math.round((Date.now() - STARTED) / 1000)}s</pre>
+<p><a href="/health">/health</a></p>`;
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Length": Buffer.byteLength(html) });
+    return res.end(html);
+  }
+
   if (url.pathname === "/health") {
     return json(res, 200, {
       ok: true, pid: process.pid, uptimeMs: Date.now() - STARTED,
@@ -183,18 +208,34 @@ const server = http.createServer(async (req, res) => {
 
   const key = apiKey();
   if (!key) return json(res, 503, { ok: false, error: `鉴权未配置：请把密钥写入 ${KEY_FILE}（≥16 字符）。出于安全，未配置时拒绝一切请求。` });
-  if (req.headers["x-api-key"] !== key) return json(res, 401, { ok: false, error: "X-API-Key 不正确" });
 
-  if (url.pathname === "/v1/ask" && req.method === "POST") {
-    const body = await readBody(req);
-    if (!body || typeof body.task !== "string" || !body.task.trim()) {
-      return json(res, 400, { ok: false, error: "body 需要 { task: \"...非空字符串\", sessionId?: \"session-…\" }" });
+  // 密钥来源：优先请求头；其次 ?key=（方便浏览器直测）。两边都 trim，容忍空白。
+  const offered = String(req.headers["x-api-key"] ?? url.searchParams.get("key") ?? "").trim();
+  if (offered !== key) {
+    return json(res, 401, {
+      ok: false,
+      error: "X-API-Key 不正确",
+      hint: "若你是用浏览器直接打开本地址：浏览器发不出请求头，请改用 GET /v1/ask?key=<密钥>&task=… 或在脚本里带 X-API-Key。",
+    });
+  }
+
+  const isPost = url.pathname === "/v1/ask" && req.method === "POST";
+  const isGet = url.pathname === "/v1/ask" && req.method === "GET";
+  if (isPost || isGet) {
+    const body = isPost ? await readBody(req) : {};
+    const task = isGet ? (url.searchParams.get("task") || "") : body && body.task;
+    const sessionId = isGet ? (url.searchParams.get("sessionId") || undefined) : body && body.sessionId;
+    if (typeof task !== "string" || !task.trim()) {
+      return json(res, 400, {
+        ok: false,
+        error: isGet ? "GET 需要 ?task=…（可选 &sessionId=…）" : 'body 需要 { task: "...非空字符串", sessionId?: "session-…" }',
+      });
     }
-    const result = await serialize(() => runHeadless(body.task, body.sessionId));
+    const result = await serialize(() => runHeadless(task, sessionId));
     return json(res, result.ok ? 200 : 500, result);
   }
 
-  json(res, 404, { ok: false, error: "可用：GET /health、POST /v1/ask" });
+  json(res, 404, { ok: false, error: "可用：GET / 、GET /health、POST /v1/ask、GET /v1/ask?key=&task=" });
 });
 
 server.listen(PORT, "0.0.0.0", () => {

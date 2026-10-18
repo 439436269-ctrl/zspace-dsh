@@ -1017,6 +1017,10 @@ DSH 自身**没有**可网络直连的 REST 面，三条路都不通：
 ### 接口
 
 ```http
+GET  /
+     → 浏览器打开时返回一页 HTML 说明（无需鉴权）。**这点很重要**：浏览器发不出自定义
+       请求头，早先直接打开只会看到 401 JSON，很容易误判成"接口坏了"。
+
 GET  /health
      → 无需鉴权。返回诊断：dsh 路径探测、真实 workspace、node 路径、是否已配鉴权
 
@@ -1024,7 +1028,13 @@ POST /v1/ask
      headers: X-API-Key: <密钥>
      body:    { "task": "…", "sessionId": "session-…" }   sessionId 可选，用于续接上一轮
      → { ok, answer, sessionId, usage:{inputTokens,outputTokens,totalTokens}, ms }
+
+GET  /v1/ask?key=<密钥>&task=…[&sessionId=…]
+     → 与 POST 等价，专为"在浏览器地址栏/手机里直接试"而加。
+       ⚠️ key 会进 URL 与访问日志，长期用请改回 POST + 请求头。
 ```
+
+密钥比对前会 `trim()` —— 多一个空格或换行不会失败（2026-10-18 实测）。
 
 ### 用法
 
@@ -1040,6 +1050,22 @@ curl -s -X POST https://remote-access-19389.zconnect.cn/v1/ask \
 curl -s -X POST https://remote-access-19389.zconnect.cn/v1/ask \
   -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
   -d '{"task":"刚才那个文件里写的是什么？","sessionId":"session-…"}'
+```
+
+**PowerShell 用户注意**：上面是 bash 语法，`KEY=$(cat …)` 在 PowerShell 里不成立，
+`$KEY` 会是空值 → 直接 401。PowerShell 版：
+
+```powershell
+$k = (Get-Content "$env:USERPROFILE\.secrets\dsh-api-key.txt" -Raw).Trim()
+Invoke-RestMethod -Method Post -Uri "https://remote-access-19389.zconnect.cn/v1/ask" `
+  -Headers @{ "X-API-Key" = $k } -ContentType "application/json; charset=utf-8" `
+  -Body ([Text.Encoding]::UTF8.GetBytes('{"task":"只回复两个字：收到"}'))
+```
+
+浏览器最快自测（把密钥填进去，点开即可）：
+
+```
+https://remote-access-19389.zconnect.cn/v1/ask?key=<密钥>&task=只回复两个字：收到
 ```
 
 **实测（2026-10-18）**：
