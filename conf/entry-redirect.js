@@ -202,8 +202,11 @@ const server = http.createServer(async (req, res) => {
           if (body.includes("</head>")) body = body.replace("</head>", POLYFILL + "</head>");
           else if (body.includes("<body")) body = body.replace(/<body[^>]*>/, (m) => m + POLYFILL);
           const buf = Buffer.from(body, "utf8");
+          // 必须同时清掉 content-length（要重算）和 transfer-encoding（上游是分块的话会和
+          // content-length 冲突，表现为 HPE_INVALID_CONTENT_LENGTH —— 2026-10-18 实测踩过）
           delete outHeaders["content-length"];
           delete outHeaders["content-encoding"];
+          delete outHeaders["transfer-encoding"];
           outHeaders["content-length"] = buf.length;
           res.writeHead(pr.statusCode, outHeaders);
           res.end(buf);
