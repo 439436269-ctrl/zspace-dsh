@@ -1238,3 +1238,58 @@ dockerd 所在的命名空间里只能看到这个路径，所以 `Binds` 必须
 **用 `POST /system/reboot`** —— 它不在 `/zdocker` 命名空间下，是从极空间网页端 JS 里挖出来的，
 不走 Docker 所以 wedge 时也能用。详见 `docs/zspace-docker-api.md` §3.8.1。
 
+
+---
+
+## 13. 极空间容器里的 DSH agent **无法执行命令**（2026-10-18 实测）
+
+想把本机好用的插件同步到极空间的 DSH 上时发现的。**不是插件的问题，是容器环境的问题。**
+
+### 现象
+
+通过 API 桥（19389）让容器里的 DSH agent 跑一个安装脚本，它两次都拒绝执行：
+
+```
+# 第一次（默认 workspace-write）
+Error: sandbox mode "workspace-write" is requested but no sandbox backend is usable
+on this host; refusing to run the command unconfined. Install bubblewrap or run a
+Landlock-enforcing kernel (Linux), ...
+
+# 第二次（按提示提权）
+Error: sandbox escalation to "danger-full-access" requires approval,
+but no approval channel is available
+```
+
+### 根因
+
+`node:latest` 镜像里**没有 bubblewrap**，宿主内核**也没启用 Landlock** —— 所以
+`workspace-write` 要求的沙箱后端根本不可用，连 `ls` 都起不来。
+而唯一能绕开的 `danger-full-access` 需要审批通道，网页/API 会话里没有。
+
+**结论：容器里的 DSH agent 默认一条命令都执行不了。**
+
+### 踩到的第二层：补丁层压不过环境变量
+
+我先在 `/dsh/conf/extra.patch.yml` 里写了 `permission.defaultPreset: danger-full-access`，
+日志确认补丁确实加载了（`--patch /dsh/conf/extra.patch.yml`），**但 agent 报的还是 workspace-write**。
+
+因为容器的**环境变量 `DSH_PERMISSION_MODE=workspace-write` 优先级更高**。
+
+### 正确修法
+
+改环境变量、重建容器（不是改补丁）：
+
+```
+DSH_PERMISSION_MODE=danger-full-access
+```
+
+`danger-full-access` 配的是 `approval: never`，不需要审批通道。
+
+**代价**：允许容器里的 DSH 执行任意命令。只影响容器内部；真正要命的是
+`/dsh/conf/api-key.txt` —— 那把 key 本来就能驱动任意任务。
+
+### 顺带一个通用教训
+
+**"补丁写对了但行为没变" 先查环境变量。** 配置的优先级是
+bundle → profile 补丁 → `$DSH_HOME` 补丁 → `--patch`，但**环境变量在最外层**，
+和配置文件不是同一套层级，补丁里改的值可能被 env 直接覆盖。
