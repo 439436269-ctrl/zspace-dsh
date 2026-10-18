@@ -1100,3 +1100,69 @@ https://remote-access-19389.zconnect.cn/v1/ask?key=<密钥>&task=只回复两个
 
 `remote-access-19389.zconnect.cn` 是通配域名，不需要在极空间「远程访问」里单独加条目；
 但要在手机上点开，可以在那边加一条 `127.0.0.1:19389`（和 `DSH稳定入口` 同样的形状）。
+
+---
+
+## 11. 在极空间客户端里打开 DSH 的注意事项
+
+这一节是 2026-10-18 把「界面能打开但不能用」彻底修通的全过程记录。**四个坑是叠在一起的**，
+修好一个才暴露下一个，所以按顺序读。
+
+### 坑 1：客户端内置浏览器太老 → `AbortSignal.any is not a function`
+
+界面能渲染，但一点「选择工作区目录」就红字报错。
+
+`AbortSignal.any()` 是 **Chromium 116+** 的 API，极空间客户端的内嵌内核比这老。
+
+**修法**：稳定入口代理（`conf/entry-redirect.js`）对 HTML 响应**注入兼容垫片**，插在 `</head>` 之前，
+保证在应用脚本前执行。新浏览器上垫片全是空操作。补了 `AbortSignal.any/timeout`、
+`Object.hasOwn`、`Array.at/findLast/findLastIndex/toSorted/toReversed`、
+`String.replaceAll/at`、`Promise.withResolvers`、`structuredClone`。
+
+实现要点：只对 HTML 路径（`/`、`/index.html`、`*.html`）走改写分支，其余照旧 stream 透传
+（否则 633KB 的 JS 也要读进内存）；这些路径上去掉 `accept-encoding` 拿明文；
+改写后**必须同时删 `content-length` 和 `transfer-encoding`** 再重算，否则
+`HPE_INVALID_CONTENT_LENGTH`（实测踩过）。
+
+### 坑 2：代理改了 `Host` 却没改 `Origin` → WebSocket 被判跨源 → 界面卡「正在加载模型…」
+
+**这是最隐蔽的一个。** DSH 的界面取数据不走 REST，走 WebSocket，路径 **`/api/remote.mux`**
+（`dsh-api-gateway` 里写死的 `REMOTE_STREAM_MUX_PATH`）。这条通道断了，界面就是永远转圈。
+
+代理为了绕开 DSH 的 Host 围栏会把 `Host` 改写成 `127.0.0.1:19387`，但浏览器发来的
+`Origin` 还是 `https://remote-access-19388.zconnect.cn` —— **两者不一致，DSH 判成跨源**，
+直接拒绝升级（HTTP 400，中转再包成 502）。
+
+**修法**：`upstreamHeaders()` 里把 `Origin` 跟着 `Host` 一起改写：
+
+```js
+if (h.origin) h.origin = `http://${TARGET_HOST}:${TARGET_PORT}`;
+```
+
+⚠️ **把 19388 加进 `--trusted-host` 并不能解决这个**（实测加了仍然 502）——白名单管的是
+Host 围栏，跨源检查是另一件事。两条都要做，但别指望前者能替代后者。
+
+### 坑 3：`Sec-WebSocket-Key` 必须恰好 16 字节
+
+用不合规的 key（比如 20 字节）测试时，DSH 回 400。**只影响手工测试脚本**，浏览器发的永远合规
+—— 但如果你用脚本验证 WS，key 不对会得出"服务端坏了"的错误结论。我就在这里误判过一轮。
+
+### 坑 4：工作区选在容器内部 → 容器重建就丢
+
+界面里选工作区时，**不要选 `/root/...`** 这类容器内部路径。真正持久化的是挂在 NAS 上的：
+
+```
+容器内 /workspace  ←→  NAS 上 home:docker/dsh/workspace
+```
+
+在极空间的文件管理器里能看到这份文件，重建容器也不丢。API 桥的 `DSH_WORKSPACE` 也是这个路径。
+
+### 一条方法论教训（比上面四个坑都值钱）
+
+排查 WS 时，我先看到「代理日志里没有 `ws upgraded`」就断言「极空间中转不透传 WebSocket」，
+**白绕了一整轮**。真相是处理器内部失败时同样不写成功日志。
+
+**正确顺序**：给处理器加**入口日志 + 错误日志**（收到的请求、上游返回的状态码、错误码），
+再看日志。加了之后 5 分钟就定位到真因。
+
+> **"看不到成功日志"不等于"请求没到"。** 缺日志是缺证据，不是有反证。

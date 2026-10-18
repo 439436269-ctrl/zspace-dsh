@@ -12,7 +12,9 @@ home/*.patch.yml
 !home/*.example
 conf/env.sh
 !conf/env.sh.example
-conf/trusted_hosts.txt
+# conf/trusted_hosts.txt **要入库**：它是真正的配置（DSH 的 Host/Origin 白名单），
+# 丢了容器就起不来正确的围栏。内容只有极空间的 remote-access-<端口>.zconnect.cn，
+# 端口即映射端口、不含账号信息，公开无风险。
 # HTTP API 桥的鉴权密钥：等价于「在你的 NAS 上执行任意 DSH 任务」，绝不入库
 conf/api-key.txt
 

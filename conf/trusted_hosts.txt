@@ -1,0 +1,13 @@
+# 额外允许访问 DSH 的地址（host 或 host:port），一行一个，# 开头是注释。
+# host 网络模式下，NAS 自己的局域网 IP 会被自动信任，通常这里不用写。
+# 走了域名 / 内网穿透时，把域名写在这里，然后重启容器。
+# 例：dsh.example.com
+#
+# 极空间「远程访问」映射出来的公网地址（Docker → 容器 → 远程访问）。
+# 端口号即映射端口，访问时 DSH 看到的 Host 就是这个域名，不写会被 /api 围栏 403。
+remote-access-19387.zconnect.cn
+# 稳定入口（反向代理）的地址。必须写：浏览器是从 19388 加载页面的，
+# 所以 WebSocket 升级请求带的 Origin 是 https://remote-access-19388.zconnect.cn。
+# 2026-10-18 实测：光加这一条**不足以**让 WS 通过（代理还得把 Origin 和 Host
+# 一起改写，否则 DSH 判跨源）——但它本来就该在这儿，因为页面确实来自 19388。
+remote-access-19388.zconnect.cn
