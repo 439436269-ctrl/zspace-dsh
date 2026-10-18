@@ -120,6 +120,10 @@ function upstreamHeaders(req, cookie) {
   const h = Object.assign({}, req.headers);
   h.host = `${TARGET_HOST}:${TARGET_PORT}`;
   if (cookie) h.cookie = h.cookie ? `${h.cookie}; ${cookie}` : cookie;
+  // Origin 必须和改写后的 Host 保持一致，否则 DSH 的同源检查会判成"跨源"并拒绝
+  // （WebSocket 升级表现为 HTTP 400 → 中转再包一层 502 → 界面卡在「正在加载模型…」）。
+  // 2026-10-18 实测：只改 Host 不改 Origin，即使把 19388 加进 --trusted-host 也照样被拒。
+  if (h.origin) h.origin = `http://${TARGET_HOST}:${TARGET_PORT}`;
   return h;
 }
 
@@ -229,10 +233,21 @@ const server = http.createServer(async (req, res) => {
 });
 
 // ── WebSocket：DSH 的界面走 ws，必须转发 upgrade ────────────────────────────
+//
+// 2026-10-18 诊断增强：入口第一行就打日志。原因是「客户端超时」有两种完全不同的成因——
+//   ① 极空间中转压根没把 upgrade 转过来（日志里看不到这行）
+//   ② 转过来了但本处理器内部失败（能看到这行，之后的日志能看出失败点）
+// 之前只看"成功日志"缺失就断言是中转的问题，是推断过头了。
 server.on("upgrade", async (req, socket, head) => {
+  const t0 = Date.now();
+  log(`ws 收到 upgrade 请求 ${req.url}  host=${req.headers.host || "?"}`);
+
+  socket.on("error", (e) => log(`ws socket error: ${e.code || e.message}`));
+
   let cookie = null;
-  try { cookie = await authCookie(); } catch {}
-  if (!cookie) { socket.destroy(); return; }
+  try { cookie = await authCookie(); } catch (e) { log(`ws 取 cookie 抛错: ${e.message}`); }
+  if (!cookie) { log("ws 放弃：拿不到 auth cookie"); socket.destroy(); return; }
+  log(`ws 已带 cookie，开始向上游 127.0.0.1:${TARGET_PORT} 发起 upgrade（${Date.now() - t0}ms）`);
 
   const p = http.request({
     host: TARGET_HOST,
@@ -252,9 +267,21 @@ server.on("upgrade", async (req, socket, head) => {
     socket.pipe(upstream);
     upstream.on("error", () => socket.destroy());
     socket.on("error", () => upstream.destroy());
-    log(`ws upgraded ${req.url}`);
+    log(`ws upgraded ${req.url}（${Date.now() - t0}ms）`);
   });
-  p.on("error", () => socket.destroy());
+
+  // 上游没升级而是回了普通响应（例如 401/404）——要把状态码记下来
+  p.on("response", (rs) => {
+    log(`ws 上游拒绝升级：HTTP ${rs.statusCode} ${req.url}`);
+    rs.resume();
+    try { socket.destroy(); } catch {}
+  });
+
+  p.on("error", (e) => {
+    log(`ws 上游错误 ${e.code || e.message} ${req.url}`);
+    try { socket.destroy(); } catch {}
+  });
+  p.on("timeout", () => { log(`ws 上游超时 ${req.url}`); p.destroy(); try { socket.destroy(); } catch {} });
   p.end();
 });
 
