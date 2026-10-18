@@ -591,11 +591,20 @@ body: {}                            ← 空对象就够（实测 POST 带 {} →
 实测 **15 秒内 containerd 恢复，容器按各自 restart 策略自动拉起**。
 极空间自己的文案就是：「此处重启不会影响极空间其他服务，仅重启 Docker 服务。」
 
-> ⚠️ **2026-10-17 第二次踩坑，白跑了一轮**：自己写的 `zd.js` 里 `call(endpoint, method = "GET")`
+> ⚠️ **2026-10-17 第二次踩坑，白跑了两轮**：自己写的 `zd.js` 里 `call(endpoint, method = "GET")`
 > **默认是 GET**，脚本里图省事只传了 endpoint，于是又一次发成 GET → 404 → 误判"这个接口失效了"。
-> **凡是带动作的端点（`system_restart`、`container_op`、`container_start/stop`、`compose_*`）
-> 都必须显式传 `"POST"`。** 排查顺序：先确认方法对不对，再怀疑接口。用 `curl -X GET` 验一下
-> 也能快速分辨（GET 404 / POST 200 = 典型的"方法不对"）。
+>
+> **方法不统一，必须逐个记住（实测）：**
+>
+> | 端点 | 正确方法 | 错误方法的症状 |
+> |---|---|---|
+> | `/zdocker/system_restart` | **POST**（body 空对象 `{}` 即可） | GET → `404 page not found` |
+> | `/zdocker/container_op?container_id=…&action=start\|stop\|restart` | **GET** | **POST → `404 page not found`** |
+> | `container_list` / `container_logs` / `container_stats` / `container_top` | GET | — |
+>
+> 所以**不要一刀切**——别以为"带动作就一定 POST"（`container_op` 恰恰是 GET）。
+> **排查顺序：先确认方法，再怀疑接口**（同一个 URL `curl -X GET` 和 `-X POST` 各打一次，
+> 一个 200 一个 404 就说明是方法不对）。
 
 **两个副作用要注意**：
 
