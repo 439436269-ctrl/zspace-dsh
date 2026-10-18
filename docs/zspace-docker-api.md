@@ -637,6 +637,68 @@ curl.exe -s -o NUL -w "%{http_code}" https://remote-access-19388.zconnect.cn/
 home:docker/dsh/home/container.log   →   mtime 停在很久以前 = 里面的进程早就死了
 ```
 
+### 3.8.1 补正（2026-10-18）：`system_restart` 救不了 containerd，只有整机重启能救
+
+上面那套恢复流程**这一次失效了**。同日实测的完整经过：
+
+1. 我为迁移工作区去停 `zspace-dsh`，`container_op?action=stop` 返回 200，
+   但容器**半死**（进程没了、dockerd 仍报 running），随后 `container_op` 的
+   `start` / `restart` **全部**报 `dial unix:///run/containerd/containerd.sock: timeout`。
+2. `POST /zdocker/system_restart` 试了 **4 次**：每次返回 200，一次也没救活。
+   **原因：它重启的是 dockerd，不动 containerd。**
+3. `/zdocker/system_switch?status=off|on`（Docker 服务开关）也试了：
+   `status` 4 秒就切回 on，是极空间的管理开关，**同样不重启 containerd**。
+4. 拿最小容器 `appstore_ddns-go` 验证 → 同样失败（它报的是另一个错
+   `driver failed programming external connectivity`，说明**网络层也坏了**）。
+5. **最后靠整机重启解决**：`POST /system/reboot` → 7 分 20 秒后全部容器自动恢复。
+
+#### 关键发现：`/system/reboot` 这个接口
+
+它**不在 `/zdocker` 命名空间下**，所以之前扫 `/zdocker/*` 端点列表时根本不会看到它。
+是从**极空间网页端的主 JS** 里挖出来的：
+
+```powershell
+# 1) 拿到网页端 HTML，找它引用的 JS
+GET http://127.0.0.1:13579/home/            # 桌面客户端网关
+# 2) 在 /home/static/js/index.<hash>.js（约 1.5MB）里搜 reboot
+#    命中：/system/reboot 、/system/shutdown 、/storagepool/esata/v2/sys/reboot
+```
+
+```http
+POST /system/reboot            # body 空对象 {} 即可
+→ {"code":"200","ts":...,"msg":"200","data":{}}
+```
+
+**它不走 Docker**，所以 containerd 坏着也能用 —— 这是目前**唯一能在 API 层修
+containerd wedge 的手段**。实测恢复约 7~8 分钟。
+
+> 找这类"系统级"接口的通用办法：**别只在 `/zdocker/*` 里找**，去网页端 JS 里搜。
+> 极空间把 Docker 相关接口放 `/zdocker`，把设备/系统相关放 `/system` 等另一套命名空间。
+
+#### 关于 `container_top` 当健康检查：它有陷阱
+
+`container_top` 在**容器本身没运行时**会直接返回 `container <id> is not running`，
+**根本不去碰 containerd** —— 所以它报"正常"完全不能证明引擎健康。
+
+**可靠的判据**：看它有没有返回真实的进程列表：
+
+```jsonc
+// 健康（containerd 真的在工作）
+{"data":{"Processes":[["root","18258","18237","0","22:55","?",...]]}}
+// 不健康（wedge）
+{"code":"Error response from daemon: ... dial unix:///run/containerd/containerd.sock: timeout"}
+```
+
+#### 补正：停容器"必然 wedge"这个结论是错的
+
+同一天晚些时候，同样的 `container_op?action=stop` 在**引擎健康时 4 秒就停好了**，
+删除、重建、启动全部顺利（详见 README 第 12 节）。
+
+**正确表述**：**在已经退化的引擎上**，任何 `container_op` 写操作都会撞上 wedge；
+引擎健康时它们是安全的。所以"停容器有风险"的真正含义是
+**"先确认引擎是健康的，再停"** —— 判据见上一条。
+
+
 ---
 
 ## 4. 坑速查表

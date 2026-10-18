@@ -1166,3 +1166,75 @@ Host 围栏，跨源检查是另一件事。两条都要做，但别指望前者
 再看日志。加了之后 5 分钟就定位到真因。
 
 > **"看不到成功日志"不等于"请求没到"。** 缺日志是缺证据，不是有反证。
+
+---
+
+## 12. 把工作区迁到「团队空间/公共分组」（2026-10-18 完成）
+
+### 现状
+
+```
+容器内  /workspace
+          ↕  bind mount
+宿主机  /tmp/zfsv3/sata1/public/公共分组/docker/dsh/workspace
+真实    /sata1/public/公共分组/docker/dsh/workspace
+界面    文件管理 → 团队空间 → 公共分组 → docker → dsh → workspace
+```
+
+### 为什么要写在 `/tmp/zfsv3/...` 而不是 `/sata1/...`
+
+**`/tmp/zfsv3/` 不是系统临时目录**，是极空间把存储池挂给 dockerd 用的**挂载点**。
+dockerd 所在的命名空间里只能看到这个路径，所以 `Binds` 必须写它。
+
+两套路径指向同一份数据——实测过：让 DSH 在 `/workspace` 写一个文件，
+再用极空间 API 从 `/sata1/...` 读回来，内容和时间戳完全一致。
+
+| 视角 | 个人空间 | 公共空间 |
+|---|---|---|
+| 容器 / dockerd | `/tmp/zfsv3/sata1/<账号>/data/...` | `/tmp/zfsv3/sata1/public/...` |
+| 真实 / 文件管理器 | `/sata1/my/data/...` | `/sata1/public/...` |
+
+### 怎么迁（Docker 不能给运行中的容器加挂载，只能重建）
+
+1. 停旧容器：`GET /zdocker/container_op?container_id=<id>&action=stop`
+2. 删旧容器：`GET /zdocker/container_op?container_id=<id>&action=remove`
+3. 用新挂载重建：`POST /zdocker/container_create?name=zspace-dsh`，
+   body 就是 §3.2 那套结构，只把 `HostConfig.Binds` 里 `/workspace` 那条换成新路径
+4. 启动：`GET /zdocker/container_op?container_id=<新id>&action=start`
+5. 验收：端口 200 / 401 / 200 + WS 101
+
+**实测耗时**：停 4 秒、删 6 秒、建 2 秒、启动到 200 共 **156 秒**。
+
+### ⚠️ 同一个操作，两次结果完全不同
+
+| | 2026-10-18 下午（失败） | 2026-10-18 晚上（成功） |
+|---|---|---|
+| 停容器 | 卡 90 秒+ → containerd wedge | **4 秒** |
+| 引擎状态 | 已连续重启 4 次，处于退化状态 | 刚整机重启过，干净 |
+| 后果 | 服务中断 3 小时，最后靠 `/system/reboot` | 全程无异常 |
+
+**结论**：`container_op` 的写操作**在引擎健康时是安全的**。
+所谓"停容器有风险"，准确含义是**"先确认引擎健康，再停"**。
+
+### 引擎健康怎么判（`container_top` 有陷阱）
+
+`container_top` 在**容器没运行时**会直接返回 `not running`，
+**根本不去碰 containerd** —— 它报"正常"完全不能证明引擎健康。
+
+**看它有没有返回真实进程列表**才是可靠判据：
+
+```jsonc
+// 健康
+{"data":{"Processes":[["root","18258","18237","0","22:55","?",...]]}}
+// wedge
+{"code":"Error response from daemon: ... dial unix:///run/containerd/containerd.sock: timeout"}
+```
+
+### 如果真的 wedge 了：只有整机重启能救
+
+`system_restart`（重启 dockerd）、`system_switch`（Docker 服务开关）、
+`container_op` 的 start/restart **全部无效**，因为它们都不重启 containerd。
+
+**用 `POST /system/reboot`** —— 它不在 `/zdocker` 命名空间下，是从极空间网页端 JS 里挖出来的，
+不走 Docker 所以 wedge 时也能用。详见 `docs/zspace-docker-api.md` §3.8.1。
+
