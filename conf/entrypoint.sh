@@ -209,9 +209,23 @@ if [ -f "${DSH_CONF_DIR}/entry-redirect.js" ]; then
   log "稳定入口已启动：http://<极空间IP>:${DSH_ENTRY_PORT:-19388}/  （不随重启变化，推荐用它）"
 fi
 
+# HTTP API 桥（可选）：把 `dsh --profile headless` 包成普通 HTTP 接口，用于「API 方式对话 + coding」。
+# DSH 自身没有可网络直连的 REST 面（界面走 WebSocket，/api/* 全 404；sdk profile 是 stdio），
+# 所以补这一层。鉴权密钥放在 conf/api-key.txt（读文件而非环境变量，轮换密钥不用重建容器）；
+# 密钥缺失时桥会拒绝一切请求。
+api_pid=""
+if [ -f "${DSH_CONF_DIR}/dsh-api-bridge.js" ]; then
+  DSH_BIN="$DSH_BIN" DSH_WORKSPACE="${DSH_WORKSPACE_DIR:-/workspace}" \
+    DSH_API_PORT="${DSH_API_PORT:-19389}" \
+    node "${DSH_CONF_DIR}/dsh-api-bridge.js" >>"$LOG_FILE" 2>&1 &
+  api_pid=$!
+  log "HTTP API 桥已启动：http://<极空间IP>:${DSH_API_PORT:-19389}/v1/ask  （需 X-API-Key）"
+fi
+
 term() {
   kill -TERM "$child" 2>/dev/null || true
   if [ -n "$shim_pid" ]; then kill -TERM "$shim_pid" 2>/dev/null || true; fi
+  if [ -n "$api_pid" ]; then kill -TERM "$api_pid" 2>/dev/null || true; fi
 }
 trap term TERM INT
 

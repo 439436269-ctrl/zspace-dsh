@@ -13,6 +13,8 @@ home/*.patch.yml
 conf/env.sh
 !conf/env.sh.example
 conf/trusted_hosts.txt
+# HTTP API 桥的鉴权密钥：等价于「在你的 NAS 上执行任意 DSH 任务」，绝不入库
+conf/api-key.txt
 
 # ── 运行态产物 ──
 *.log

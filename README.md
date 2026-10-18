@@ -993,3 +993,84 @@ git remote -v      # 必须是 https://github.com/...，不能是 git@github.com
 代价是**本地与远端成为平行历史**（tree 相同、SHA 不同），恢复后要
 `git fetch origin && git reset --hard origin/main` 对齐。
 **能 push 就别用这条**——它是症状不是解法，而且中文文件名在 Windows 上还有二次编码的坑。
+
+---
+
+## 10. 用 HTTP API 对话与 coding（端口 19389）
+
+### 为什么要自己加这一层
+
+DSH 自身**没有**可网络直连的 REST 面，三条路都不通：
+
+| 通道 | 实际情况 |
+|---|---|
+| `dsh web`（19387）的 `/api/*` | **全部 404**。界面走的是 **WebSocket**（`dsh-api-gateway`），不是 REST |
+| `dsh --profile sdk` | 官方 SDK，但走 **stdio JSON-RPC** —— 客户端必须自己拉起进程 |
+| `dsh --profile headless` | 一次性回答，本来就是 CLI |
+
+所以本部署在容器里加了 `conf/dsh-api-bridge.js`（**19389**），把
+`dsh --profile headless --json` 包成普通 HTTP 接口。
+
+选 headless 而不是 sdk 的理由：`headless` 自带 **`--session-id`**，能续接持久化会话；
+事件流第一行就给出 `sessionId`；每次调用是独立进程，不需要维护常驻 JSON-RPC 连接——**稳定性远高于自己实现 sdk 协议**。
+
+### 接口
+
+```http
+GET  /health
+     → 无需鉴权。返回诊断：dsh 路径探测、真实 workspace、node 路径、是否已配鉴权
+
+POST /v1/ask
+     headers: X-API-Key: <密钥>
+     body:    { "task": "…", "sessionId": "session-…" }   sessionId 可选，用于续接上一轮
+     → { ok, answer, sessionId, usage:{inputTokens,outputTokens,totalTokens}, ms }
+```
+
+### 用法
+
+```bash
+KEY=$(cat ~/.secrets/dsh-api-key.txt)
+
+# 一次问答
+curl -s -X POST https://remote-access-19389.zconnect.cn/v1/ask \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"task":"只回复两个字：收到"}'
+
+# 续接同一会话（把上一轮返回的 sessionId 带回来）
+curl -s -X POST https://remote-access-19389.zconnect.cn/v1/ask \
+  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"task":"刚才那个文件里写的是什么？","sessionId":"session-…"}'
+```
+
+**实测（2026-10-18）**：
+
+```
+第 1 轮 "在当前目录创建 hello-api.txt，内容写…"
+  → 200 / 12s  {"ok":true,"answer":"已在当前目录创建 hello-api.txt…","sessionId":"session-a0e634dc-…"}
+  → NAS 上 /workspace/hello-api.txt 内容正确 ✅
+第 2 轮 同一 sessionId 续接 "刚才那个文件里写的是什么？"
+  → 200 / 10s  {"ok":true,"answer":"来自 DSH HTTP API 的第一行"}   ← 多轮记忆生效
+```
+
+### 鉴权（**必须**）
+
+密钥在 `conf/api-key.txt`，**不入库**（已加 `.gitignore`）。
+
+- 桥**读文件**而不是读环境变量 —— **轮换密钥不用重建容器**，改文件后重启容器即可（或等下次重启）
+- 文件缺失或短于 16 字符 → **拒绝一切请求**（fail-closed）。
+  因为这个接口等价于「在你的 NAS 上执行任意 DSH 任务」，裸奔等于把 NAS 交出去。
+- 客户端密钥本机备份在 `~/.secrets/dsh-api-key.txt`
+
+### 几个坑（都实测踩过）
+
+| 现象 | 真因 |
+|---|---|
+| `spawn failed: … ENOENT`（看起来像"命令不存在"） | **`cwd` 不存在**。`spawn` 带一个不存在的 cwd 返回的就是 ENOENT。工作区在容器里是 **`/workspace`**，不是 `/dsh/workspace` |
+| 同样是 ENOENT | `dsh` 是**软链**（→ `lib/bin.js`，带 shebang）。shebang 解释器不在 PATH 上时也报 ENOENT。桥里做了三级回退：原样 → `node`(绝对路径)+脚本 → PATH 里的 `node` |
+| 并发请求互相踩 | DSH 是单 agent。桥把请求**串行排队** |
+| 想让它在别处干活 | 改 `DSH_WORKSPACE` 环境变量（entrypoint 里传 `DSH_WORKSPACE_DIR`） |
+
+### 远程访问
+
+`remote-access-19389.zconnect.cn` 是通配域名，不需要在极空间「远程访问」里单独加条目；
+但要在手机上点开，可以在那边加一条 `127.0.0.1:19389`（和 `DSH稳定入口` 同样的形状）。
