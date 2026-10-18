@@ -123,6 +123,56 @@ function upstreamHeaders(req, cookie) {
   return h;
 }
 
+/**
+ * 老浏览器兼容垫片（2026-10-18 实测需要）
+ *
+ * 极空间 PC 客户端的内置浏览器内核比 Chromium 116 老，而 DSH 的界面用了
+ * `AbortSignal.any()`（Chromium 116+）。不垫的话打开界面会卡在
+ * 「选择工作区目录」并报 `AbortSignal.any is not a function`。
+ *
+ * 只在新浏览器上没有对应 API 时才生效，老/新浏览器都安全。
+ * 顺便把同批次（Chromium 90~110 区间）常见缺失的 API 一并补上，
+ * 避免修了一个再报下一个。
+ */
+const POLYFILL = `<script>(function(){
+  try{
+    if(!AbortSignal.any) AbortSignal.any=function(sigs){
+      var c=new AbortController(), f=function(){c.abort();}, i, s;
+      for(i=0;i<sigs.length;i++){ s=sigs[i];
+        if(s.aborted){ f(); break; }
+        s.addEventListener("abort", f, {once:true});
+      }
+      return c.signal; };
+    if(!AbortSignal.timeout) AbortSignal.timeout=function(ms){
+      var c=new AbortController();
+      setTimeout(function(){ try{c.abort(new DOMException("TimeoutError","TimeoutError"));}catch(e){c.abort();} }, ms);
+      return c.signal; };
+    if(!Object.hasOwn) Object.hasOwn=function(o,k){ return Object.prototype.hasOwnProperty.call(o,k); };
+    if(!Array.prototype.at) Array.prototype.at=function(n){ n=Math.trunc(n)||0; if(n<0)n+=this.length;
+      return (n<0||n>=this.length)?undefined:this[n]; };
+    if(!Array.prototype.findLast) Array.prototype.findLast=function(f,t){
+      for(var i=this.length-1;i>=0;i--){ if(f.call(t,this[i],i,this)) return this[i]; } };
+    if(!Array.prototype.findLastIndex) Array.prototype.findLastIndex=function(f,t){
+      for(var i=this.length-1;i>=0;i--){ if(f.call(t,this[i],i,this)) return i; } return -1; };
+    if(!String.prototype.replaceAll) String.prototype.replaceAll=function(p,r){
+      return (p instanceof RegExp)?this.replace(p,r):this.split(p).join(r); };
+    if(!String.prototype.at) String.prototype.at=function(n){ n=Math.trunc(n)||0; if(n<0)n+=this.length;
+      return (n<0||n>=this.length)?undefined:this[n]; };
+    if(!Promise.withResolvers) Promise.withResolvers=function(){
+      var a,b,p=new Promise(function(x,y){a=x;b=y;}); return {promise:p,resolve:a,reject:b}; };
+    if(!Array.prototype.toSorted) Array.prototype.toSorted=function(c){ return this.slice().sort(c); };
+    if(!Array.prototype.toReversed) Array.prototype.toReversed=function(){ return this.slice().reverse(); };
+  }catch(e){ console.warn("[polyfill]",e); }
+  try{ if(!window.structuredClone) window.structuredClone=function(v){
+    return (typeof v==="undefined")?v:JSON.parse(JSON.stringify(v)); }; }catch(e){}
+})();</script>`;
+
+/** 这几种路径返回的是 HTML，需要注入垫片。 */
+function isHtmlPath(p) {
+  const path = String(p || "/").split("?")[0];
+  return path === "/" || path === "/index.html" || path.endsWith(".html");
+}
+
 const server = http.createServer(async (req, res) => {
   let cookie = null;
   try { cookie = await authCookie(); } catch {}
@@ -132,12 +182,38 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  const html = isHtmlPath(req.url);
+  const headers = upstreamHeaders(req, cookie);
+  // 要改写 HTML 就必须拿到明文：这几种路径上去掉 accept-encoding（体积很小，不值得为它解压）
+  if (html) delete headers["accept-encoding"];
+
   const p = http.request(
-    { host: TARGET_HOST, port: TARGET_PORT, path: req.url, method: req.method, headers: upstreamHeaders(req, cookie) },
+    { host: TARGET_HOST, port: TARGET_PORT, path: req.url, method: req.method, headers },
     (pr) => {
-      const headers = Object.assign({}, pr.headers);
-      if (headers.location) headers.location = rewriteLocation(headers.location);
-      res.writeHead(pr.statusCode, headers);
+      const outHeaders = Object.assign({}, pr.headers);
+      if (outHeaders.location) outHeaders.location = rewriteLocation(outHeaders.location);
+
+      if (html && pr.statusCode === 200) {
+        const chunks = [];
+        pr.on("data", (c) => chunks.push(c));
+        pr.on("end", () => {
+          let body = Buffer.concat(chunks).toString("utf8");
+          // 垫片要在应用脚本之前执行：插在 </head> 前，退而求其次插在 <body> 后
+          if (body.includes("</head>")) body = body.replace("</head>", POLYFILL + "</head>");
+          else if (body.includes("<body")) body = body.replace(/<body[^>]*>/, (m) => m + POLYFILL);
+          const buf = Buffer.from(body, "utf8");
+          delete outHeaders["content-length"];
+          delete outHeaders["content-encoding"];
+          outHeaders["content-length"] = buf.length;
+          res.writeHead(pr.statusCode, outHeaders);
+          res.end(buf);
+          log(`已注入兼容垫片 ${
+            req.url}（${buf.length}B）`);
+        });
+        return;
+      }
+
+      res.writeHead(pr.statusCode, outHeaders);
       pr.pipe(res);
     }
   );
