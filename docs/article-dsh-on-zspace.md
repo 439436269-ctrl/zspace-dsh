@@ -471,3 +471,7 @@ DSH_PERMISSION_MODE=danger-full-access
 - 部署手册与逆向文档：<https://github.com/439436269-ctrl/zspace-dsh>
 
 最后一句实话：这套东西的价值不在优雅，它是 workaround 叠出来的——绕开"不许对外监听"的配置覆盖、绕开"token 每次都变"的代理、绕开老内核的注入、绕开"没有 REST 面"的 CLI 包装。它能用，是因为每层都试过、每处失败都留下了记录；它也会坏，坏的时候多半是 containerd，而不是 DSH。
+
+---
+
+本文也发布于知乎：<https://zhuanlan.zhihu.com/p/2095524862131552977>
