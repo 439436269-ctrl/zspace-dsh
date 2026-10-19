@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2350" height="1000" viewBox="0 0 2350 1000">
+<style>
+  text { font-kerning: normal; }
+  .cn { font-family: 'Microsoft YaHei', 'Microsoft YaHei UI', 'PingFang SC', sans-serif; }
+  .mono { font-family: Consolas, 'Cascadia Mono', 'SF Mono', monospace; }
+  </style>
+<rect width="2350" height="1000" fill="#0f1115"/>
+<g stroke="#151a20" stroke-width="1"><line x1="0" y1="0" x2="0" y2="1000"/><line x1="76" y1="0" x2="76" y2="1000"/><line x1="152" y1="0" x2="152" y2="1000"/><line x1="228" y1="0" x2="228" y2="1000"/><line x1="304" y1="0" x2="304" y2="1000"/><line x1="380" y1="0" x2="380" y2="1000"/><line x1="456" y1="0" x2="456" y2="1000"/><line x1="532" y1="0" x2="532" y2="1000"/><line x1="608" y1="0" x2="608" y2="1000"/><line x1="684" y1="0" x2="684" y2="1000"/><line x1="760" y1="0" x2="760" y2="1000"/><line x1="836" y1="0" x2="836" y2="1000"/><line x1="912" y1="0" x2="912" y2="1000"/><line x1="988" y1="0" x2="988" y2="1000"/><line x1="1064" y1="0" x2="1064" y2="1000"/><line x1="1140" y1="0" x2="1140" y2="1000"/><line x1="1216" y1="0" x2="1216" y2="1000"/><line x1="1292" y1="0" x2="1292" y2="1000"/><line x1="1368" y1="0" x2="1368" y2="1000"/><line x1="1444" y1="0" x2="1444" y2="1000"/><line x1="1520" y1="0" x2="1520" y2="1000"/><line x1="1596" y1="0" x2="1596" y2="1000"/><line x1="1672" y1="0" x2="1672" y2="1000"/><line x1="1748" y1="0" x2="1748" y2="1000"/><line x1="1824" y1="0" x2="1824" y2="1000"/><line x1="1900" y1="0" x2="1900" y2="1000"/><line x1="1976" y1="0" x2="1976" y2="1000"/><line x1="2052" y1="0" x2="2052" y2="1000"/><line x1="2128" y1="0" x2="2128" y2="1000"/><line x1="2204" y1="0" x2="2204" y2="1000"/><line x1="2280" y1="0" x2="2280" y2="1000"/><line x1="0" y1="0" x2="2350" y2="0"/><line x1="0" y1="76" x2="2350" y2="76"/><line x1="0" y1="152" x2="2350" y2="152"/><line x1="0" y1="228" x2="2350" y2="228"/><line x1="0" y1="304" x2="2350" y2="304"/><line x1="0" y1="380" x2="2350" y2="380"/><line x1="0" y1="456" x2="2350" y2="456"/><line x1="0" y1="532" x2="2350" y2="532"/><line x1="0" y1="608" x2="2350" y2="608"/><line x1="0" y1="684" x2="2350" y2="684"/><line x1="0" y1="760" x2="2350" y2="760"/><line x1="0" y1="836" x2="2350" y2="836"/><line x1="0" y1="912" x2="2350" y2="912"/><line x1="0" y1="988" x2="2350" y2="988"/></g>
+<g class="cn">
+<rect x="132" y="133.11" width="14.22" height="14.22" fill="none" stroke="#4fd6a9" stroke-width="2.49"/>
+<text class="mono" x="171.11" y="150" font-size="23.11" letter-spacing="4.62" fill="#4fd6a9">DEPLOYMENT NOTES</text>
+<text x="132" y="438" font-size="96" font-weight="300" fill="#8b97a4">把<tspan dx="28.44" font-weight="700" fill="#f3f6f8">DeepSeek Harness</tspan></text>
+<text x="132" y="574" font-size="96" font-weight="300" fill="#8b97a4">装进<tspan dx="28.44" font-weight="700" fill="#f3f6f8">极空间</tspan><tspan dx="24.89" font-weight="700" fill="#4fd6a9">NAS</tspan></text>
+</g>
+<rect x="132" y="642" width="99.56" height="4.44" fill="#4fd6a9"/>
+<text class="cn" x="132" y="730" font-size="42.67" letter-spacing="2.84" fill="#a9b4c0">一份带代价的部署记录</text>
+<text class="mono" x="132" y="850" font-size="25.78" letter-spacing="0.71" fill="#6b7683">host 网络 · 7×24 常开 · 模型走 API</text>
+<g>
+<rect x="1330.00" y="130.00" width="880.00" height="740.00" rx="40.00" fill="#151a21" stroke="#2a323d" stroke-width="3.20"/>
+<text class="cn" x="1378.00" y="198.00" font-size="30.00" fill="#9aa5b1">极空间 NAS</text>
+<text class="mono" x="2162.00" y="198.00" font-size="22.00" letter-spacing="2.40" text-anchor="end" fill="#4b5460">Z4S</text>
+<rect x="1378.00" y="242.00" width="784.00" height="492.00" rx="24.00" fill="#101418" stroke="#4fd6a9" stroke-opacity="0.5" stroke-width="3.20" stroke-dasharray="14.00 10.00"/>
+<text class="mono" x="1410.00" y="294.00" font-size="24.00" fill="#4fd6a9" fill-opacity="0.85">container · zspace-dsh</text>
+<rect x="1866.00" y="262.00" width="264.00" height="48.00" rx="10.00" fill="none" stroke="#4fd6a9" stroke-opacity="0.35" stroke-width="2.40"/>
+<text class="mono" x="1998.00" y="294.00" font-size="22.00" text-anchor="middle" fill="#4fd6a9" fill-opacity="0.85">0.2.0-rc.2</text>
+<text class="mono" x="1410.00" y="434.00" font-size="84.00" font-weight="700" letter-spacing="2.00" fill="#f3f6f8">DSH</text>
+<text class="mono" x="1410.00" y="482.00" font-size="24.00" fill="#6b7683">dsh web · agent runtime</text>
+<line x1="1410.00" y1="514.00" x2="2130.00" y2="514.00" stroke="#333c47" stroke-width="2.00"/>
+<rect x="1410.00" y="538.00" width="156.00" height="52.00" rx="12.00" fill="#171d24" stroke="#333c47" stroke-width="2.40"/>
+<text class="mono" x="1488.00" y="572.00" font-size="24.00" text-anchor="middle" fill="#9aa5b1" font-weight="400">19387</text>
+<rect x="1582.00" y="538.00" width="156.00" height="52.00" rx="12.00" fill="#4fd6a9" stroke="#4fd6a9" stroke-width="2.40"/>
+<text class="mono" x="1660.00" y="572.00" font-size="24.00" text-anchor="middle" fill="#0b1512" font-weight="700">19388</text>
+<rect x="1754.00" y="538.00" width="156.00" height="52.00" rx="12.00" fill="#171d24" stroke="#333c47" stroke-width="2.40"/>
+<text class="mono" x="1832.00" y="572.00" font-size="24.00" text-anchor="middle" fill="#9aa5b1" font-weight="400">19389</text>
+<text class="cn" x="2130.00" y="572.00" font-size="22.00" text-anchor="end" fill="#4fd6a9">稳定入口</text>
+<text class="mono" x="1410.00" y="654.00" font-size="22.00" fill="#5f6a76">bind  conf · home · npm · workspace</text>
+<text class="mono" x="1378.00" y="806.00" font-size="23.00" fill="#616c79">remote-access → :19388</text>
+<circle cx="2098.00" cy="798.00" r="6.00" fill="#4fd6a9"/>
+<circle cx="2122.00" cy="798.00" r="6.00" fill="#333c47"/>
+<circle cx="2146.00" cy="798.00" r="6.00" fill="#333c47"/>
+</g>
+<text class="mono" x="2210" y="920" font-size="21.33" letter-spacing="2.49" text-anchor="end" fill="#39424c">zspace-dsh</text>
+</svg>
