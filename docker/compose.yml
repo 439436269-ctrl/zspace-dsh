@@ -1,18 +1,25 @@
 # =============================================================================
 # zspace-dsh — 极空间 Docker「Compose / 项目」粘贴版
 #
-# 极空间 Docker 2.0 有 Compose（项目）入口时，把这份 YAML 粘进去即可。
-# 注意：下面左侧的 NAS 路径要改成你自己的，先在极空间文件管理里建好目录。
+# ⚠️ 这份文件对应的是**实测跑通的那套配置**，和早期版本有五处不同：
+#    镜像 node:latest、host 网络、/tmp/zfsv3 路径、danger-full-access、信任地址走文件。
+#
+# 用法：极空间 Docker 有 Compose（项目）入口时，改掉下面标了「改」的占位符再粘。
+# 没有 Compose 入口就直接在界面/API 里按这些字段建容器（见 README §12、
+# docs/article-dsh-on-zspace.md §4.5）。
 # =============================================================================
 services:
   zspace-dsh:
-    image: node:22-bookworm-slim
+    # 改：镜像。实测用的是 node:latest；约束是 Node ≥ 22（DSH 的 engines 要求）。
+    image: node:latest
     container_name: zspace-dsh
-    restart: unless-stopped
+    restart: always
 
-    # 极空间宿主机端口:容器端口。左侧可按需改，右侧必须与 DSH_PORT 一致。
-    ports:
-      - "19387:19387"
+    # ★ 必须是 host 网络。
+    #   原因：bridge 下容器只看到 172.x，看不到 NAS 的真网卡，DSH 从网卡推导出的
+    #   "可信访问地址"就不含极空间的真实 IP，浏览器的请求会被 /api 围栏拒掉。
+    #   用了 host 之后，ports 段不需要也不应该再写。
+    network_mode: host
 
     environment:
       TZ: "Asia/Shanghai"
@@ -20,29 +27,35 @@ services:
       # 要装的 dsh 版本；升级就是改这里然后重启容器
       DSH_VERSION: "0.2.0-rc.2"
 
-      # 容器内监听端口，必须与上面 ports 的右侧一致
+      # 容器内监听端口。host 网络下这就是宿主机端口，必须与 10-listen.yml 一致。
       DSH_PORT: "19387"
 
-      # ★ 必填：你极空间的访问地址。填局域网 IP 或域名。
-      #   容器里看不到极空间的真实 IP，不填这个 /api 围栏会拒绝浏览器请求。
-      DSH_PUBLIC_HOST: "<NAS-IP>"
-
-      # 可选：额外允许的 authority（走了域名/内网穿透时写域名），空格分隔
-      # DSH_TRUSTED_HOSTS: "<NAS-IP> dsh.example.com"
-
-      # 权限模式。先试 workspace-write；若日志报沙箱不可用则改 danger-full-access。
-      # 此时容器本身就是安全边界，只挂了下面这几个目录。
-      DSH_PERMISSION_MODE: "workspace-write"
+      # ★ 实测必须是 danger-full-access。
+      #   node:latest 里没有 bubblewrap、宿主内核也没启用 Landlock，所以
+      #   workspace-write 的沙箱后端根本起不来，agent 连 `ls` 都执行不了。
+      #   ⚠️ 这条只管容器内部；真正的风险面是 /dsh/conf/api-key.txt（API 桥的密钥）。
+      DSH_PERMISSION_MODE: "danger-full-access"
 
       # 国内建议用镜像源；装失败会自动回退到 registry.npmjs.org
       DSH_NPM_REGISTRY: "https://registry.npmmirror.com"
 
-    volumes:
-      # 左侧 = 极空间上的真实路径（自己建），右侧固定不要改
-      - /sata1/dsh/npm:/dsh/npm
-      - /sata1/dsh/home:/dsh/home
-      - /sata1/dsh/conf:/dsh/conf
-      - /sata1/dsh/workspace:/workspace
+      # 注意：**不要**再写 DSH_PUBLIC_HOST。信任地址现在从
+      # /dsh/conf/trusted_hosts.txt 读（一行一个，由 entrypoint 拼成 --trusted-host）。
 
-    # 用挂载进来的 entrypoint；如果用的是自建镜像则删掉这行
+    volumes:
+      # ⚠️ 极空间的卷路径必须写成 /tmp/zfsv3/... 那一套。
+      #   /sata1/... 是文件管理器里看到的路径，dockerd 所在命名空间看不到它。
+      #   两套路径指向同一份数据（README §12 有实证）。
+      #
+      #   改：把 <存储池> 和 <账号目录> 换成你自己的。
+      #     个人空间 = /tmp/zfsv3/<存储池>/<账号目录>/data/...
+      #     公共空间 = /tmp/zfsv3/<存储池>/public/...（没有账号目录这一层）
+      - /tmp/zfsv3/<存储池>/<账号目录>/data/docker/dsh/npm:/dsh/npm
+      - /tmp/zfsv3/<存储池>/<账号目录>/data/docker/dsh/home:/dsh/home
+      - /tmp/zfsv3/<存储池>/<账号目录>/data/docker/dsh/conf:/dsh/conf
+      # 工作区可以放在公共空间，方便跨设备共享；放个人空间也完全可以。
+      - /tmp/zfsv3/<存储池>/public/公共分组/docker/dsh/workspace:/workspace
+
+    # 用挂载进来的 entrypoint：它负责生成 10-listen.yml、装 DSH、拼 --trusted-host，
+    # 再依次拉起 dsh web（19387）、稳定入口代理（19388）、HTTP API 桥（19389）。
     command: ["bash", "/dsh/conf/entrypoint.sh"]
