@@ -27,6 +27,9 @@ tmp/
 *.bak-*
 *.v1-*
 entry-url.txt
+# 百家号发布的一次性侦察脚本与中间件（2026-10-19）：只在本机留档，不进仓库。
+# 其中 verify-reader.js 值得留，已整理到 scripts/verify-reader.js 走正式路径入库。
+tmp-bjh/
 
 # ── 依赖与构建产物 ──
 node_modules/
@@ -40,6 +43,10 @@ shots/
 *.jpg
 # 文章配图例外：docs/images 下的截图随文章一起入库
 !docs/images/*.png
+# 例外中的例外：code-01~13.png 是「代码块渲染成图片」那条被否决方案的产物（13 张 / 611.7 KB），
+# 不随文章入库，但保留在磁盘当兜底素材（公众号以后若要图片版代码块可直接用）。
+# 必须写在上面那条 ! 之后——gitignore 以最后一条匹配的规则为准。
+docs/images/code-*.png
 
 # ── OS / IDE ──
 .DS_Store
